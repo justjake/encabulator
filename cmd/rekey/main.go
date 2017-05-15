@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"github.com/justjake/unison-wrapper/rekey"
+	"github.com/justjake/encabulator/rekey"
 	"os"
 )
 

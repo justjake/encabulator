@@ -26,7 +26,7 @@ ftch = !rekey && git fetch
 You can also alias `ssh` to ensure your keys are loaded:
 
 ```bash
-alias ssh="reke && ssh"
+alias ssh="rekey && ssh"
 ```
 
 TODOs for the command-line tool:
