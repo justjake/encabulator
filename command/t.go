@@ -1,4 +1,4 @@
-package commands
+package command
 
 import (
 	"fmt"
@@ -17,13 +17,15 @@ var LongFlagPrefix = DashDash
 // ShortFlagPrefix The default prefix applied to single-character flags in a command.
 var ShortFlagPrefix = Dash
 
-// Cmd is a factory (with decent erganomics) for creating *exec.Cmd structs.
-//
-type Cmd struct {
+// command.T is a factory for creating *exec.Cmd structs. Create one manually,
+// or use the builder function `New()`. Consider using the `T.Flag` and `T.Arg`
+// methods to mutate your command, then use `T.Build()` to return an *exec.Cmd
+// that's ready to run.
+type T struct {
 	// The prefix of the command.
 	//   gitLog := commands.Cmd{First: []string{"git", "log"}}.Flag("short", true)
 	First []string
-	// Cmd handles several different types when it comes to flag values:
+	// Flags handles several different types when it comes to flag values:
 	//   - nil: the flag will not be set.
 	//   - string: the flag will be set to the string.
 	//   - fmt.Stringer: the flag will be set to `value.String()`.
@@ -47,15 +49,15 @@ type Cmd struct {
 	FlagsSeperator *string
 }
 
-// Command returns a new *Cmd with the given name.
-func Command(path string, more ...string) *Cmd {
-	return &Cmd{
+// Command returns a new *T with the given name and arguments.
+func New(path string, more ...string) *T {
+	return &T{
 		First: append([]string{path}, more...),
 	}
 }
 
 // Flag sets a flag to a value on this Cmd, and returns the Cmd.
-func (cmd *Cmd) Flag(flag string, value interface{}) *Cmd {
+func (cmd *T) Flag(flag string, value interface{}) *T {
 	if cmd.Flags == nil {
 		cmd.Flags = make(map[string]interface{})
 	}
@@ -65,7 +67,7 @@ func (cmd *Cmd) Flag(flag string, value interface{}) *Cmd {
 }
 
 // Arg adds all the given strings as positional arguments, and returns the Cmd.
-func (cmd *Cmd) Arg(values ...string) *Cmd {
+func (cmd *T) Arg(values ...string) *T {
 	if cmd.Args == nil {
 		cmd.Args = values
 	} else {
@@ -75,7 +77,7 @@ func (cmd *Cmd) Arg(values ...string) *Cmd {
 	return cmd
 }
 
-func (cmd *Cmd) applyDefaults() {
+func (cmd *T) applyDefaults() {
 	if cmd.LongFlagPrefix == nil {
 		cmd.LongFlagPrefix = &LongFlagPrefix
 	}
@@ -85,7 +87,7 @@ func (cmd *Cmd) applyDefaults() {
 }
 
 // Slice returns this command's arguments as a slice of strings.
-func (cmd *Cmd) Slice() []string {
+func (cmd *T) Slice() []string {
 	cmd.applyDefaults()
 
 	length := len(cmd.First) + len(cmd.Args) + len(cmd.Flags)*2
@@ -132,7 +134,7 @@ func (cmd *Cmd) Slice() []string {
 
 // Build an *exec.Cmd from this Cmd. This returns a new *exec.Cmd on each call,
 // allowing you to use a Cmd as a factory.
-func (cmd *Cmd) Build() *exec.Cmd {
+func (cmd *T) Build() *exec.Cmd {
 	argv := cmd.Slice()
 	name := argv[0]
 	return exec.Command(name, argv[1:]...)
@@ -142,13 +144,13 @@ func (cmd *Cmd) Build() *exec.Cmd {
 // second command. This is useful for building multi-level commands.
 //
 // TODO: copy instead of mutate?
-func (cmd *Cmd) Join(inner *Cmd) *Cmd {
+func (cmd *T) Join(inner *T) *T {
 	prefix := append(cmd.Slice(), inner.First...)
 	inner.First = prefix
 	return inner
 }
 
-func (cmd *Cmd) String() string {
+func (cmd *T) String() string {
 	return fmt.Sprintf(
 		"%T{%q %q %q}",
 		cmd, cmd.First, cmd.Flags, cmd.Args,
