@@ -11,7 +11,7 @@ func Equal(t *testing.T, a, b interface{}, message ...string) {
 	}
 
 	if len(message) == 0 {
-		message = []string{"%v != %v"}
+		message = []string{"%#v != %#v"}
 	}
 
 	t.Errorf(message[0], a, b)
