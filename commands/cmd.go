@@ -1,4 +1,4 @@
-package command
+package commands
 
 import (
 	"fmt"
@@ -36,7 +36,7 @@ func (cmd *Cmd) Build() *exec.Cmd {
 
 	out := new(exec.Cmd)
 	out.Path = cmd.Path
-	out.Args = make([]string, len(cmd.Args)+len(cmd.Flags)*2)
+	out.Args = make([]string, 0, len(cmd.Args)+len(cmd.Flags)*2)
 
 	// --foo bar
 	// -f bar
