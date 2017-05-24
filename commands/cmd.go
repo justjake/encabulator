@@ -14,7 +14,7 @@ var ShortFlagPrefix = "-"
 // Cmd is a factory (with decent erganomics) for creating *exec.Cmd instances.
 type Cmd struct {
 	Path            string
-	Flags           map[string]string
+	Flags           map[string]interface{}
 	Args            []string
 	LongFlagPrefix  *string
 	ShortFlagPrefix *string
@@ -45,7 +45,23 @@ func (cmd *Cmd) Build() *exec.Cmd {
 		if len(key) == 1 {
 			prefix = cmd.ShortFlagPrefix
 		}
-		out.Args = append(out.Args, *prefix+key, value)
+
+		flag := *prefix + key
+
+		switch value := value.(type) {
+		default:
+			panic(fmt.Sprintf("unexpected type %T value %v", value, value))
+		case bool:
+			// TODO: handle --foo=false or --no-foo ???
+			if value {
+				out.Args = append(out.Args, flag)
+			}
+		case string:
+			out.Args = append(out.Args, flag, value)
+		case fmt.Stringer:
+			out.Args = append(out.Args, flag, value.String())
+
+		}
 	}
 
 	out.Args = append(out.Args, cmd.Args...)
@@ -54,6 +70,6 @@ func (cmd *Cmd) Build() *exec.Cmd {
 }
 
 func (cmd *Cmd) String() string {
-	return fmt.Sprintf("%T{%s %v %v}",
+	return fmt.Sprintf("%T{%s %q %v}",
 		cmd, cmd.Path, cmd.Flags, cmd.Args)
 }
