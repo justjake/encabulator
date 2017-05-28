@@ -1,0 +1,3 @@
+[submodule "ci/unison"]
+	path = ci/unison
+	url = git@github.com:bcpierce00/unison
