@@ -1,13 +1,16 @@
 require 'pathname'
+
 DOCKER_IMAGE_GLIBC='ocaml/opam:ubuntu-12.04_ocaml-4.04.1'
 DOCKER_IMAGE_MUSL='ocaml/opam:alpine-3.3_ocaml-4.04.1'
 DEST = Pathname.new(__dir__).join('build')
+HERE = Pathname.new(__dir__)
 
 class Build
   def initialize(opts = {})
-    @image = opts[:image] || DOCKER_IMAGE_GLIBC
-    @unison_src = opts[:unison_src] || "./unison"
-    @extra_commands = opts[:extra_commands] || []
+    @image = opts.fetch :image
+    @dest = opts.fetch :dest
+    @unison_src = opts.fetch(:unison_src, HERE.join('unison').to_s)
+    @extra_commands = opts.fetch(:extra_commands, [])
   end
 
   attr_reader :image, :unison_src, :extra_commands
@@ -17,6 +20,9 @@ class Build
       # add unison source to container
       run("docker cp #{unison_src} #{container}:/unison")
       run("docker exec #{container} sudo chown -R opam /unison")
+
+      # Uncomment to interact with the container before the build starts
+      #interact(container)
 
       # do various extra things
       extra_commands.each do |cmd|
@@ -35,9 +41,9 @@ class Build
   private
 
   def interact(container)
-    puts "Stopping for interaction. Exit or press Ctrl-D to continue"
+    puts "Stopping for interaction. Exit or press Ctrl-D to continue the build"
     puts "CONTAINER: #{container}"
-    run("docker exec -it #{container} /bin/bash")
+    run("docker exec -it #{container} /bin/bash || true")
   end
 
   def run(cmd)
@@ -72,19 +78,23 @@ class Build
   end
 
   def dest
-    @dest ||= begin
-      os = image.split(':').last
-      res = Pathname.new(__dir__).join("build/#{os}")
-      res.mkpath
-      res
-    end
+    res = HERE.join("build", @dest)
+    res.mkpath unless res.exist?
+    res
   end
 end
 
 if ARGV.length >= 2
   Build.new(image: ARGV[0], unison_src: ARGV[1]).perform
 else
-  #Build.new(image: DOCKER_IMAGE_GLIBC, unison_src: ARGV[0]).perform
+  # glibc
+  Build.new(
+    image: DOCKER_IMAGE_GLIBC,
+    unison_src: ARGV[0],
+    dest: "linux-glibc",
+  ).perform
+
+  # musl
   Build.new(
     image: DOCKER_IMAGE_MUSL,
     unison_src: ARGV[0],
@@ -94,5 +104,6 @@ else
       # https://git.alpinelinux.org/cgit/aports/diff/community/unison/fix_inotify_check.patch?id=f5fb4fa4ed695ff1c8eda1971f0d4be46bc85864
       "sed -i -e 's/GLIBC_SUPPORT_INOTIFY 0/GLIBC_SUPPORT_INOTIFY 1/' /unison/src/fsmonitor/linux/inotify_stubs.c"
     ],
+    dest: "linux-musl",
   ).perform
 end
