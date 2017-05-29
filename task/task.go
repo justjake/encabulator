@@ -19,7 +19,8 @@ type Task struct {
 	Input chan<- []byte
 	// Output will emit Event structs as events (like process output or process
 	// termination) occurr.
-	Output <-chan *Event
+	Output    <-chan *Event
+	splitFunc bufio.SplitFunc
 }
 
 func (task *Task) String() string {
@@ -58,16 +59,32 @@ func Spawn(cmd *exec.Cmd, splitter bufio.SplitFunc) (*Task, error) {
 	toProcess := make(chan []byte)
 
 	task := &Task{
-		cmd:    cmd,
-		pty:    pty,
-		Input:  toProcess,
-		Output: fromProcess,
+		cmd:       cmd,
+		pty:       pty,
+		splitFunc: splitter,
+		Input:     toProcess,
+		Output:    fromProcess,
 	}
 
 	go emitEvents(task, scanner, fromProcess, toProcess)
 	go sendInput(pty, toProcess)
 
 	return task, nil
+}
+
+// Respawn spawns a new task with a duplicate of this task's command.
+func (task *Task) Respawn() (*Task, error) {
+	return Spawn(
+		&exec.Cmd{
+			Path:        task.cmd.Path,
+			Args:        task.cmd.Args,
+			Env:         task.cmd.Env,
+			Dir:         task.cmd.Dir,
+			ExtraFiles:  task.cmd.ExtraFiles,
+			SysProcAttr: task.cmd.SysProcAttr,
+		},
+		task.splitFunc,
+	)
 }
 
 func emitEvents(task *Task, scanner *bufio.Scanner, out chan<- *Event, closeOnEnd chan []byte) {
