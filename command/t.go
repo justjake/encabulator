@@ -105,7 +105,7 @@ func (cmd *T) Slice() []string {
 
 		switch value := value.(type) {
 		default:
-			out = append(out, fmt.Sprintf("%v", value))
+			out = append(out, flag, fmt.Sprintf("%v", value))
 		case nil:
 			// pass
 		case bool:
