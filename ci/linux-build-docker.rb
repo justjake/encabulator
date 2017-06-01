@@ -1,7 +1,32 @@
 require 'pathname'
 
-DOCKER_IMAGE_GLIBC='ocaml/opam:ubuntu-12.04_ocaml-4.04.1'
-DOCKER_IMAGE_MUSL='ocaml/opam:alpine-3.3_ocaml-4.04.1'
+DOCKER_IMAGE_UBUNTU='ocaml/opam:ubuntu-12.04_ocaml-4.04.1'
+DOCKER_IMAGE_ALPINE='ocaml/opam:alpine-3.3_ocaml-4.04.1'
+DOCKER_IMAGE_CENTOS='ocaml/opam:centos-6_ocaml-4.04.1'
+
+UBUNTU_1204_LDD_VERSION = <<-EOS
+ldd (Ubuntu EGLIBC 2.15-0ubuntu10.18) 2.15
+Copyright (C) 2012 Free Software Foundation, Inc.
+This is free software; see the source for copying conditions.  There is NO
+warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+Written by Roland McGrath and Ulrich Drepper.
+EOS
+
+CENTOS_LDD_VESION = <<-EOS
+ldd (GNU libc) 2.12
+Copyright (C) 2010 Free Software Foundation, Inc.
+This is free software; see the source for copying conditions.  There is NO
+warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+Written by Roland McGrath and Ulrich Drepper.
+EOS
+
+ALPINE_LDD_VERSION = <<-EOS
+musl libc
+Version 1.1.12
+Dynamic Program Loader
+Usage: ldd [options] [--] pathname
+EOS
+
 DEST = Pathname.new(__dir__).join('build')
 HERE = Pathname.new(__dir__)
 
@@ -9,7 +34,7 @@ class Build
   def initialize(opts = {})
     @image = opts.fetch :image
     @dest = opts.fetch :dest
-    @unison_src = opts.fetch(:unison_src, HERE.join('unison').to_s)
+    @unison_src = opts[:unison_src] || HERE.join('unison').to_s
     @extra_commands = opts.fetch(:extra_commands, [])
   end
 
@@ -29,8 +54,12 @@ class Build
         run("docker exec #{container} #{cmd}")
       end
 
+
       # make unison
-      run(%Q(docker exec #{container} bash -c 'cd /unison && make'))
+      #
+      # note the "eval opam config env", which ensures that we're actually
+      # using the OPAM env for our build.
+      run(%Q(docker exec #{container} bash -c 'eval $(opam config env) && cd /unison && make'))
 
       # retrieve built product
       run("docker cp #{container}:/unison/src/unison #{dest}/unison")
@@ -87,16 +116,16 @@ end
 if ARGV.length >= 2
   Build.new(image: ARGV[0], unison_src: ARGV[1]).perform
 else
-  # glibc
-  Build.new(
-    image: DOCKER_IMAGE_GLIBC,
-    unison_src: ARGV[0],
-    dest: "linux-glibc",
-  ).perform
+  # eglibc - not needed? should be ok with glibc
+  #Build.new(
+    #image: DOCKER_IMAGE_GLIBC,
+    #unison_src: ARGV[0],
+    #dest: "linux-eglibc-2.15",
+  #).perform
 
   # musl
   Build.new(
-    image: DOCKER_IMAGE_MUSL,
+    image: DOCKER_IMAGE_ALPINE,
     unison_src: ARGV[0],
     extra_commands: [
       # force inotify support recognized, even on a non-glibc system
@@ -105,5 +134,13 @@ else
       "sed -i -e 's/GLIBC_SUPPORT_INOTIFY 0/GLIBC_SUPPORT_INOTIFY 1/' /unison/src/fsmonitor/linux/inotify_stubs.c"
     ],
     dest: "linux-musl",
+  ).perform
+
+
+  # Centos 6 - glibc?
+  Build.new(
+    image: DOCKER_IMAGE_CENTOS,
+    unison_src: ARGV[0],
+    dest: "linux-glibc"
   ).perform
 end
