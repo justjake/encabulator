@@ -10,7 +10,7 @@ end
 
 desc "convert external binary assets into golang source"
 task :assets do
-  sh 'go-bindata -o unison/assets.go ./ci/build/...'
+  sh 'go-bindata -debug -pkg unison -o unison/assets_generated.go -prefix ci/build ./ci/build/...'
 end
 
 task :help do

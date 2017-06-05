@@ -9,6 +9,7 @@ import (
 	"github.com/justjake/encabulator/unison"
 	"log"
 	"os/exec"
+	"path"
 	"regexp"
 	"time"
 )
@@ -20,6 +21,16 @@ func init() {
 }
 
 func main() {
+
+	manager := unison.Manager()
+	manifest := unison.OsManifest()
+	for _, req := range manifest {
+		err := manager.Stage(req, path.Base(req))
+		if err != nil {
+			panic(err)
+		}
+	}
+
 	flag.Parse()
 	args := flag.Args()
 	if len(args) < 2 {
