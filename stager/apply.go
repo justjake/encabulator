@@ -61,6 +61,15 @@ func (l *Link) Apply() error {
 		return err
 	}
 
+	// we must remove existing objects to overwrite with a
+	// symlink.
+	if _, err := os.Lstat(l.path); err == nil {
+		err = os.Remove(l.path)
+		if err != nil {
+			return err
+		}
+	}
+
 	return os.Symlink(l.to, l.path)
 }
 

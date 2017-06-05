@@ -107,8 +107,8 @@ func (s *T) cacheUpsert(hash string, data []byte, careful bool) (Operation, erro
 // file with key `hash`.
 func (s *T) workspaceLink(hash, dest string) (Operation, error) {
 	path := s.cachePath(hash)
-	destpath := pathlib.Join(s.Workspace, dest)
-	relpath, err := filepath.Rel(destpath, path)
+	destpath := filepath.Join(s.Workspace, dest)
+	relpath, err := filepath.Rel(filepath.Dir(destpath), path)
 	if err != nil {
 		return nil, err
 	}

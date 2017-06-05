@@ -29,6 +29,7 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
+		log.Printf("Staged %q\n", req)
 	}
 
 	flag.Parse()
